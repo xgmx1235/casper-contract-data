@@ -1,0 +1,20 @@
+[workspace]
+members = [
+    "contract-storage",
+    "casper-mapping-type",
+]
+
+default-members = [
+    "contract-storage",
+    "casper-mapping-type",
+]
+
+[profile.release]
+overflow-checks = true
+lto = true
+codegen-units = 1
+opt-level= "s"
+
+[profile.release.package.mgx-oracle]
+debug = true
+
