@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident as Ident2, TokenStream as TokenStream2};
 use quote::{quote, TokenStreamExt, format_ident, ToTokens};
 use syn::{parse_macro_input, Data, DataStruct, DeriveInput, Fields, Field};
-
+use convert_case::{ Case, Casing };
 
 enum NamedField {
     NamedFieldSimple(NamedFieldSimple),
@@ -92,6 +92,7 @@ fn named_fields(input: DeriveInput) -> Result<Vec<NamedField>, TokenStream> {
 #[proc_macro_derive(InitializeStorage)]
 pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    let struct_ident = input.ident.clone();
     let fields = match named_fields(input) {
         Ok(fields) => fields,
         Err(error_stream) => return error_stream,
@@ -248,9 +249,10 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
         }
     }));
 
+    let initialize_struct_func_name_ident = format_ident!("initialize_{}", struct_ident.to_string().to_case(Case::Snake));
     let expanded = quote! {
         #deserialize_fields
-        pub fn initialize_contract_storage () {
+        pub fn #initialize_struct_func_name_ident () {
             #call_to_initialize_fields
         }
     };
