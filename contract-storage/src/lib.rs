@@ -249,7 +249,7 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
         }
     }));
 
-    let initialize_struct_func_name_ident = format_ident!("initialize_{}", struct_ident.to_string().to_case(Case::Snake));
+    let initialize_struct_func_name_ident = format_ident!("initialize_data_{}", struct_ident.to_string().to_case(Case::Snake));
     let expanded = quote! {
         #deserialize_fields
         pub fn #initialize_struct_func_name_ident () {
