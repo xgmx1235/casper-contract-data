@@ -1,0 +1,20 @@
+[package]
+name = "counter-v1"
+version = "1.0.0"
+authors = ["CasperLabs <https://discord.com/invite/Q38s3Vh>"]
+edition = "2021"
+
+[dependencies]
+casper-contract = "3.0.0"
+casper-types = "3.0.0"
+contract-storage = { path = "../../contract-storage" }
+contract-utilities = { path = "../../contract-utilities" }
+
+[[bin]]
+name = "counter-v1"
+path = "src/main.rs"
+bench = false
+doctest = false
+test = false
+
+[profile.release] #reduces Wasm size

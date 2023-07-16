@@ -16,3 +16,7 @@ pub struct NestedNestedMapping<T1, T2, T3, T4: casper_types::CLTyped + casper_ty
     _t3: T3,
     _t4: T4,
 }
+
+pub mod address;
+pub mod helpers;
+pub mod error;

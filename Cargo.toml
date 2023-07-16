@@ -1,12 +1,16 @@
 [workspace]
 members = [
     "contract-storage",
-    "casper-mapping-type",
+    "contract-utilities",
+    "examples/contract-v1",
+    "examples/contract-v2",
+    "examples/counter-call",
+    "tests",
 ]
 
 default-members = [
     "contract-storage",
-    "casper-mapping-type",
+    "contract-utilities",
 ]
 
 [profile.release]

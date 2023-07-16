@@ -1,14 +1,14 @@
+use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
 use proc_macro2::{Ident as Ident2, TokenStream as TokenStream2};
-use quote::{quote, TokenStreamExt, format_ident, ToTokens};
-use syn::{parse_macro_input, Data, DataStruct, DeriveInput, Fields, Field};
-use convert_case::{ Case, Casing };
+use quote::{format_ident, quote, ToTokens, TokenStreamExt};
+use syn::{parse_macro_input, Data, DataStruct, DeriveInput, Field, Fields};
 
 enum NamedField {
-    NamedFieldSimple(NamedFieldSimple),
-    NamedFieldMapping(NamedFieldMapping),
-    NamedFieldNestedMapping(NamedFieldNestedMapping),
-    NamedFieldNestedNestedMapping(NamedFieldNestedNestedMapping),
+    Simple(NamedFieldSimple),
+    Mapping(NamedFieldMapping),
+    NestedMapping(NamedFieldNestedMapping),
+    NestedNestedMapping(NamedFieldNestedNestedMapping),
 }
 
 #[derive(Clone)]
@@ -45,20 +45,20 @@ fn to_named_field(x: Field) -> NamedField {
     let name = x.clone().ident.unwrap();
     let type_tokens = x.ty.to_token_stream().into_iter().collect::<Vec<_>>();
     if type_tokens[0].to_string() == "Mapping" {
-        NamedField::NamedFieldMapping(NamedFieldMapping {
+        NamedField::Mapping(NamedFieldMapping {
             name,
             ty1: format_ident!("{}", type_tokens[2].to_string()),
             ty2: format_ident!("{}", type_tokens[4].to_string()),
         })
     } else if type_tokens[0].to_string() == "NestedMapping" {
-        NamedField::NamedFieldNestedMapping(NamedFieldNestedMapping {
+        NamedField::NestedMapping(NamedFieldNestedMapping {
             name,
             ty1: format_ident!("{}", type_tokens[2].to_string()),
             ty2: format_ident!("{}", type_tokens[4].to_string()),
             ty3: format_ident!("{}", type_tokens[6].to_string()),
         })
     } else if type_tokens[0].to_string() == "NestedNestedMapping" {
-        NamedField::NamedFieldNestedNestedMapping(NamedFieldNestedNestedMapping {
+        NamedField::NestedNestedMapping(NamedFieldNestedNestedMapping {
             name,
             ty1: format_ident!("{}", type_tokens[2].to_string()),
             ty2: format_ident!("{}", type_tokens[4].to_string()),
@@ -66,7 +66,10 @@ fn to_named_field(x: Field) -> NamedField {
             ty4: format_ident!("{}", type_tokens[8].to_string()),
         })
     } else {
-        NamedField::NamedFieldSimple(NamedFieldSimple { name, ty: format_ident!("{}", type_tokens[0].to_string()) })
+        NamedField::Simple(NamedFieldSimple {
+            name,
+            ty: format_ident!("{}", type_tokens[0].to_string()),
+        })
     }
 }
 
@@ -78,7 +81,7 @@ fn named_fields(input: DeriveInput) -> Result<Vec<NamedField>, TokenStream> {
         }) => named_fields
             .named
             .into_iter()
-            .map(|x| to_named_field(x) )
+            .map(to_named_field)
             .collect::<Vec<_>>(),
         _ => {
             return Err(TokenStream::from(
@@ -101,7 +104,7 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
     let mut deserialize_fields = TokenStream2::new();
     deserialize_fields.append_all(fields.iter().map(|ident| {
         match ident {
-            NamedField::NamedFieldSimple(ident) => {
+            NamedField::Simple(ident) => {
                 let param_name_str = ident.name.to_string();
                 let func_initialize_name = format_ident!("initialize_{}", param_name_str);
                 let func_save_name = format_ident!("save_{}", param_name_str);
@@ -122,7 +125,7 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
                     }
                 }
             },
-            NamedField::NamedFieldMapping(ident) => {
+            NamedField::Mapping(ident) => {
                 let param_name_str = ident.name.to_string();
                 let func_initialize_name = format_ident!("initialize_{}", param_name_str);
                 let func_save_name = format_ident!("save_{}", param_name_str);
@@ -151,7 +154,7 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
                     }
                 }
             },
-            NamedField::NamedFieldNestedMapping(ident) => {
+            NamedField::NestedMapping(ident) => {
                 let param_name_str = ident.name.to_string();
                 let func_initialize_name = format_ident!("initialize_{}", param_name_str);
                 let func_save_name = format_ident!("save_{}", param_name_str);
@@ -181,7 +184,7 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
                     }
                 }
             },
-            NamedField::NamedFieldNestedNestedMapping(ident) => {
+            NamedField::NestedNestedMapping(ident) => {
                 let param_name_str = ident.name.to_string();
                 let func_initialize_name = format_ident!("initialize_{}", param_name_str);
                 let func_save_name = format_ident!("save_{}", param_name_str);
@@ -216,40 +219,41 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
     }));
 
     let mut call_to_initialize_fields = TokenStream2::new();
-    call_to_initialize_fields.append_all(fields.iter().map(|ident| {
-        match ident {
-            NamedField::NamedFieldSimple(ident) => {
-                let param_name_str = ident.name.to_string();
-                let func_initialize_name = format_ident!("initialize_{}", param_name_str);
-                quote! {
-                    #func_initialize_name();
-                }
-            },
-            NamedField::NamedFieldMapping(ident) => {
-                let param_name_str = ident.name.to_string();
-                let func_initialize_name = format_ident!("initialize_{}", param_name_str);
-                quote! {
-                    #func_initialize_name();
-                }
-            },
-            NamedField::NamedFieldNestedMapping(ident) => {
-                let param_name_str = ident.name.to_string();
-                let func_initialize_name = format_ident!("initialize_{}", param_name_str);
-                quote! {
-                    #func_initialize_name();
-                }
-            },
-            NamedField::NamedFieldNestedNestedMapping(ident) => {
-                let param_name_str = ident.name.to_string();
-                let func_initialize_name = format_ident!("initialize_{}", param_name_str);
-                quote! {
-                    #func_initialize_name();
-                }
+    call_to_initialize_fields.append_all(fields.iter().map(|ident| match ident {
+        NamedField::Simple(ident) => {
+            let param_name_str = ident.name.to_string();
+            let func_initialize_name = format_ident!("initialize_{}", param_name_str);
+            quote! {
+                #func_initialize_name();
+            }
+        }
+        NamedField::Mapping(ident) => {
+            let param_name_str = ident.name.to_string();
+            let func_initialize_name = format_ident!("initialize_{}", param_name_str);
+            quote! {
+                #func_initialize_name();
+            }
+        }
+        NamedField::NestedMapping(ident) => {
+            let param_name_str = ident.name.to_string();
+            let func_initialize_name = format_ident!("initialize_{}", param_name_str);
+            quote! {
+                #func_initialize_name();
+            }
+        }
+        NamedField::NestedNestedMapping(ident) => {
+            let param_name_str = ident.name.to_string();
+            let func_initialize_name = format_ident!("initialize_{}", param_name_str);
+            quote! {
+                #func_initialize_name();
             }
         }
     }));
 
-    let initialize_struct_func_name_ident = format_ident!("initialize_data_{}", struct_ident.to_string().to_case(Case::Snake));
+    let initialize_struct_func_name_ident = format_ident!(
+        "initialize_data_{}",
+        struct_ident.to_string().to_case(Case::Snake)
+    );
     let expanded = quote! {
         #deserialize_fields
         pub fn #initialize_struct_func_name_ident () {
@@ -259,79 +263,3 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
-
-// #[proc_macro_derive(Getter)]
-// pub fn derive_from_bytes(input: TokenStream) -> TokenStream {
-//   let input = parse_macro_input!(input as DeriveInput);
-//   let struct_ident = input.ident.clone();
-//   let fields = match named_fields(input) {
-//     Ok(fields) => fields,
-//     Err(error_stream) => return error_stream,
-//   };
-
-//   let mut deserialize_fields = TokenStream2::new();
-//   deserialize_fields.append_all(fields.iter().map(|ident| {
-//     quote! {
-//       let (#ident, bytes) = casper_types::bytesrepr::FromBytes::from_bytes(bytes)?;
-//     }
-//   }));
-
-//   let mut construct_struct = TokenStream2::new();
-//   construct_struct.append_all(fields.iter().map(|ident| quote! { #ident, }));
-
-//   let expanded = quote! {
-//     impl casper_types::bytesrepr::FromBytes for #struct_ident {
-//       fn from_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), casper_types::bytesrepr::Error> {
-//         #deserialize_fields
-//         let value = #struct_ident {
-//           #construct_struct
-//         };
-//         Ok((value, bytes))
-//       }
-//     }
-//   };
-
-//   TokenStream::from(expanded)
-// }
-
-// #[proc_macro_derive(ToBytes)]
-// pub fn derive_to_bytes(input: TokenStream) -> TokenStream {
-//   let input = parse_macro_input!(input as DeriveInput);
-//   let struct_ident = input.ident.clone();
-//   let fields = match named_fields(input) {
-//     Ok(fields) => fields,
-//     Err(error_stream) => return error_stream,
-//   };
-
-//   let mut sum_serialized_lengths = TokenStream2::new();
-//   sum_serialized_lengths.append_all(fields.iter().map(|ident| {
-//     quote! {
-//       size += self.#ident.serialized_length();
-//     }
-//   }));
-
-//   let mut append_bytes = TokenStream2::new();
-//   append_bytes.append_all(fields.iter().map(|ident| {
-//     quote! {
-//       vec.extend(self.#ident.to_bytes()?);
-//     }
-//   }));
-
-//   let expanded = quote! {
-//     impl casper_types::bytesrepr::ToBytes for #struct_ident {
-//       fn serialized_length(&self) -> usize {
-//         let mut size = 0;
-//         #sum_serialized_lengths
-//         return size;
-//       }
-
-//       fn to_bytes(&self) -> Result<Vec<u8>, casper_types::bytesrepr::Error> {
-//         let mut vec = Vec::with_capacity(self.serialized_length());
-//         #append_bytes
-//         Ok(vec)
-//       }
-//     }
-//   };
-
-//   TokenStream::from(expanded)
-// }

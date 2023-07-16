@@ -1,0 +1,16 @@
+[package]
+name = "counter-call"
+version = "1.0.0"
+authors = ["CasperLabs <https://discord.com/invite/Q38s3Vh>"]
+edition = "2021"
+
+[dependencies]
+casper-contract = "3.0.0"
+casper-types = "3.0.0"
+
+[[bin]]
+name = "counter-call"
+path = "src/main.rs"
+bench = false
+doctest = false
+test = false
