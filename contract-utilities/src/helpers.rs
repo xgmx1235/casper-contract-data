@@ -55,10 +55,10 @@ pub fn set_key<T: ToBytes + CLTyped>(name: &str, value: T) {
     }
 }
 
-pub fn get_self_address() -> Result<Address, Error> {
+pub fn get_self_address() -> Result<Address, ApiError> {
     get_last_call_stack_item()
         .map(call_stack_element_to_address)
-        .ok_or(Error::InvalidContext)
+        .ok_or(Error::InvalidContext.into())
 }
 
 fn get_last_call_stack_item() -> Option<CallStackElement> {
@@ -95,10 +95,10 @@ fn call_stack_element_to_address(call_stack_element: CallStackElement) -> Addres
 ///
 /// This function ensures that only session code can execute this function, and disallows stored
 /// session/stored contracts.
-pub fn get_immediate_caller_address() -> Result<Address, Error> {
+pub fn get_immediate_caller_address() -> Result<Address, ApiError> {
     get_immediate_call_stack_item()
         .map(call_stack_element_to_address)
-        .ok_or(Error::InvalidContext)
+        .ok_or(ApiError::User(Error::InvalidContext as u16))
 }
 
 pub fn get_immediate_caller_key() -> Key {
@@ -108,8 +108,8 @@ pub fn get_immediate_caller_key() -> Key {
 
 pub(crate) fn _get_stored_value_with_user_errors<T: CLTyped + FromBytes>(
     name: &str,
-    missing: Error,
-    invalid: Error,
+    missing: ApiError,
+    invalid: ApiError,
 ) -> T {
     let uref = get_uref(name);
     _read_with_user_errors(uref, missing, invalid)
@@ -117,8 +117,8 @@ pub(crate) fn _get_stored_value_with_user_errors<T: CLTyped + FromBytes>(
 
 pub(crate) fn _read_with_user_errors<T: CLTyped + FromBytes>(
     uref: URef,
-    missing: Error,
-    invalid: Error,
+    missing: ApiError,
+    invalid: ApiError,
 ) -> T {
     let key: Key = uref.into();
     let (key_ptr, key_size, _bytes) = _to_ptr(key);
@@ -251,7 +251,7 @@ pub fn current_block_number() -> u64 {
     current_block_timestamp()
 }
 
-pub fn require(v: bool, e: Error) {
+pub fn require(v: bool, e: ApiError) {
     if !v {
         runtime::revert(e);
     }
@@ -466,9 +466,9 @@ pub(crate) fn get_named_arg_size(name: &str) -> Option<usize> {
 // If the argument is not provided at all, then it is considered as None.
 pub fn get_optional_named_arg_with_user_errors<T: FromBytes>(
     name: &str,
-    invalid: Error,
+    invalid: ApiError,
 ) -> Option<T> {
-    match get_named_arg_with_user_errors::<T>(name, Error::Phantom, invalid) {
+    match get_named_arg_with_user_errors::<T>(name, Error::Phantom.into(), invalid) {
         Ok(val) => Some(val),
         Err(_) => None,
     }
@@ -476,9 +476,9 @@ pub fn get_optional_named_arg_with_user_errors<T: FromBytes>(
 
 pub(crate) fn get_named_arg_with_user_errors<T: FromBytes>(
     name: &str,
-    missing: Error,
-    invalid: Error,
-) -> Result<T, Error> {
+    missing: ApiError,
+    invalid: ApiError,
+) -> Result<T, ApiError> {
     let arg_size = get_named_arg_size(name).ok_or(missing)?;
     let arg_bytes = if arg_size > 0 {
         let res = {
