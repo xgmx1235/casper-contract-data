@@ -109,11 +109,14 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
                 let func_initialize_name = format_ident!("initialize_{}", param_name_str);
                 let func_save_name = format_ident!("save_{}", param_name_str);
                 let func_read_name = format_ident!("read_{}", param_name_str);
+                let func_get_name = format_ident!("get_{}", param_name_str);
+                let func_get_ep_name = format_ident!("get_{}_entry_point", param_name_str);
+                let func_get_ep_name_str = func_get_ep_name.to_string();
                 let type_name = format_ident!("{}", ident.ty.to_string());
                 let param_name: Ident2 = format_ident!("_{}", ident.name.to_string());
                 quote! {
                     pub fn #func_initialize_name() {
-                        helpers::set_key(#param_name_str, #type_name::default());
+                        // helpers::set_key(#param_name_str, #type_name::default());
                     }
 
                     pub fn #func_save_name(#param_name: #type_name) {
@@ -121,7 +124,22 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
                     }
 
                     pub fn #func_read_name() -> #type_name {
-                        helpers::get_key(#param_name_str).unwrap_or_default()
+                        helpers::get_key(#param_name_str).unwrap_or_revert()
+                    }
+
+                    #[no_mangle]
+                    pub extern "C" fn #func_get_name() {
+                        runtime::ret(CLValue::from_t(#func_read_name()).unwrap_or_revert())
+                    }
+
+                    pub fn #func_get_ep_name() -> EntryPoint {
+                        EntryPoint::new(
+                            String::from(#func_get_ep_name_str),
+                            vec![],
+                            #type_name::cl_type(),
+                            EntryPointAccess::Public,
+                            EntryPointType::Contract,
+                        )
                     }
                 }
             },
@@ -133,6 +151,9 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
                 let key_type_name = format_ident!("{}", ident.ty1.to_string());
                 let value_type_name = format_ident!("{}", ident.ty2.to_string());
                 let param_name: Ident2 = format_ident!("_{}", ident.name.to_string());
+                let func_get_name = format_ident!("get_{}", param_name_str);
+                let func_get_ep_name = format_ident!("get_{}_entry_point", param_name_str);
+                let func_get_ep_name_str = func_get_ep_name.to_string();
                 quote! {
                     pub fn #func_initialize_name() {
                         storage::new_dictionary(#param_name_str)
@@ -151,6 +172,22 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
                         let bytes = runtime::blake2b(encoded);
                         let k = hex::encode(bytes);
                         helpers::get_dictionary_value_from_key(#param_name_str, &k).unwrap_or_default()
+                    }
+
+                    #[no_mangle]
+                    pub extern "C" fn #func_get_name() {
+                        let #param_name: #key_type_name = runtime::get_named_arg(#param_name_str);
+                        runtime::ret(CLValue::from_t(#func_read_name(&#param_name)).unwrap_or_revert())
+                    }
+
+                    pub fn #func_get_ep_name() -> EntryPoint {
+                        EntryPoint::new(
+                            String::from(#func_get_ep_name_str),
+                            vec![Parameter::new(#param_name_str, #key_type_name::cl_type())],
+                            #value_type_name::cl_type(),
+                            EntryPointAccess::Public,
+                            EntryPointType::Contract,
+                        )
                     }
                 }
             },
@@ -254,10 +291,55 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
         "initialize_data_{}",
         struct_ident.to_string().to_case(Case::Snake)
     );
+
+    let mut call_get_entry_points_getters = TokenStream2::new();
+    call_get_entry_points_getters.append_all(fields.iter().map(|ident| match ident {
+        NamedField::Simple(ident) => {
+            let param_name_str = ident.name.to_string();
+            let func_get_ep_name = format_ident!("get_{}_entry_point", param_name_str);
+            quote! {
+                #func_get_ep_name(),
+            }
+        }
+        NamedField::Mapping(ident) => {
+            let param_name_str = ident.name.to_string();
+            let func_get_ep_name = format_ident!("get_{}_entry_point", param_name_str);
+            quote! {
+                #func_get_ep_name(),
+            }
+        }
+        NamedField::NestedMapping(ident) => {
+            let param_name_str = ident.name.to_string();
+            let func_get_ep_name = format_ident!("get_{}_entry_point", param_name_str);
+            quote! {
+                #func_get_ep_name(),
+            }
+        }
+        NamedField::NestedNestedMapping(ident) => {
+            let param_name_str = ident.name.to_string();
+            let func_get_ep_name = format_ident!("get_{}_entry_point", param_name_str);
+            quote! {
+                #func_get_ep_name(),
+            }
+        }
+    }));
+
+    // getter entry points
+    let getter_entry_points_func_name_ident = format_ident!(
+        "getters_entry_points_for_{}",
+        struct_ident.to_string().to_case(Case::Snake)
+    );
+
     let expanded = quote! {
         #deserialize_fields
         pub fn #initialize_struct_func_name_ident () {
             #call_to_initialize_fields
+        }
+
+        pub fn #getter_entry_points_func_name_ident () -> Vec<EntryPoint> {
+            vec![
+                #call_get_entry_points_getters
+            ]
         }
     };
 
