@@ -8,6 +8,7 @@ compile_error!("target arch should be wasm32: compile with '--target wasm32-unkn
 extern crate alloc;
 // Importing Rust types.
 use alloc::{
+    vec,
     string::{String, ToString},
     vec::Vec,
 };
@@ -20,7 +21,7 @@ use casper_contract::{
 use casper_types::{
     api_error::ApiError,
     contracts::{EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, NamedKeys},
-    CLType, CLValue,
+    CLType, CLValue, CLTyped
 };
 
 // Constants for the keys pointing to values stored in the account's named keys.

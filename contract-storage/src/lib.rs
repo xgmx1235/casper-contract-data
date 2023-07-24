@@ -111,7 +111,7 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
                 let func_read_name = format_ident!("read_{}", param_name_str);
                 let func_get_name = format_ident!("get_{}", param_name_str);
                 let func_get_ep_name = format_ident!("get_{}_entry_point", param_name_str);
-                let func_get_ep_name_str = func_get_ep_name.to_string();
+                let func_get_ep_name_str = func_get_name.to_string();
                 let type_name = format_ident!("{}", ident.ty.to_string());
                 let param_name: Ident2 = format_ident!("_{}", ident.name.to_string());
                 quote! {
@@ -153,7 +153,7 @@ pub fn derive_initialize_storage(input: TokenStream) -> TokenStream {
                 let param_name: Ident2 = format_ident!("_{}", ident.name.to_string());
                 let func_get_name = format_ident!("get_{}", param_name_str);
                 let func_get_ep_name = format_ident!("get_{}_entry_point", param_name_str);
-                let func_get_ep_name_str = func_get_ep_name.to_string();
+                let func_get_ep_name_str = func_get_name.to_string();
                 quote! {
                     pub fn #func_initialize_name() {
                         storage::new_dictionary(#param_name_str)
